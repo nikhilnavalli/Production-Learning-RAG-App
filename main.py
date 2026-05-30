@@ -46,7 +46,7 @@ def extract_text(file_bytes: bytes, filename: str) -> str:
 # ── Route 1: Health check ────────────────────────────────────────────────────
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    raise Exception("Something went wrong!")
 
 
 # ── Route 2: Upload a document ───────────────────────────────────────────────
