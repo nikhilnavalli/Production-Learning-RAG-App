@@ -8,6 +8,8 @@ from pypdf import PdfReader
 from dotenv import load_dotenv
 import os
 import uuid
+import logging
+import time
 
 # ── Load environment variables ──────────────────────────────────────────────
 load_dotenv()
@@ -15,6 +17,12 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # ── Initialise clients ───────────────────────────────────────────────────────
 app = FastAPI(title="RAG Chatbot")
+# ── Logging setup ────────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s | %(levelname)s | %(message)s'
+)
+logger = logging.getLogger(__name__)
 groq_client = Groq(api_key=GROQ_API_KEY)
 embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 chroma_client = chromadb.Client()
@@ -46,16 +54,21 @@ def extract_text(file_bytes: bytes, filename: str) -> str:
 # ── Route 1: Health check ────────────────────────────────────────────────────
 @app.get("/health")
 def health():
+    logger.info("Health check called")
     return {"status": "ok"}
 
 
 # ── Route 2: Upload a document ───────────────────────────────────────────────
 @app.post("/upload")
 async def upload_document(file: UploadFile = File(...)):
+    start_time = time.time()
+    logger.info(f"Upload started | filename={file.filename}")
+
     contents = await file.read()
     text = extract_text(contents, file.filename)
 
     if not text.strip():
+        logger.error(f"Upload failed | filename={file.filename} | reason=empty text")
         raise HTTPException(status_code=400, detail="Could not extract text from file")
 
     chunks = chunk_text(text)
@@ -68,6 +81,9 @@ async def upload_document(file: UploadFile = File(...)):
         ids=ids
     )
 
+    duration = round(time.time() - start_time, 2)
+    logger.info(f"Upload complete | filename={file.filename} | chunks={len(chunks)} | duration={duration}s")
+
     return {
         "message": "Document uploaded successfully",
         "filename": file.filename,
@@ -76,27 +92,24 @@ async def upload_document(file: UploadFile = File(...)):
 
 
 # ── Route 3: Ask a question ──────────────────────────────────────────────────
-class QuestionRequest(BaseModel):
-    question: str
-
-
 @app.post("/ask")
 def ask_question(request: QuestionRequest):
-    # Step 1: embed the question
+    start_time = time.time()
+    logger.info(f"Question received | question={request.question}")
+
     question_embedding = embedding_model.encode([request.question]).tolist()[0]
 
-    # Step 2: retrieve top 3 relevant chunks from ChromaDB
     results = collection.query(
         query_embeddings=[question_embedding],
         n_results=3
     )
 
     if not results["documents"][0]:
+        logger.warning("Ask failed | reason=no documents in collection")
         raise HTTPException(status_code=404, detail="No documents uploaded yet")
 
     context = "\n\n".join(results["documents"][0])
 
-    # Step 3: send context + question to Groq
     prompt = f"""You are a helpful assistant. Answer the question based only on the context below.
 If the answer is not in the context, say "I don't know based on the provided document."
 
@@ -113,13 +126,15 @@ Question: {request.question}
     )
 
     answer = response.choices[0].message.content
+    duration = round(time.time() - start_time, 2)
+
+    logger.info(f"Answer generated | chunks_used={len(results['documents'][0])} | duration={duration}s")
 
     return {
         "question": request.question,
         "answer": answer,
         "chunks_used": len(results["documents"][0])
     }
-
 
 # ── Route 4: Frontend UI ─────────────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
