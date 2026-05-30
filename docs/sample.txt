@@ -1,0 +1,21 @@
+Acme Corporation Employee Handbook
+
+Leave Policy:
+Employees are entitled to 20 days of paid leave per year.
+Sick leave is capped at 10 days per year.
+Leaves must be applied at least 3 days in advance except in emergencies.
+
+Salary Policy:
+Salaries are credited on the 1st of every month.
+Increments are given annually in April based on performance reviews.
+Employees can apply for salary advances once per year.
+
+Work From Home Policy:
+Employees can work from home up to 2 days per week.
+Work from home requests must be approved by the team lead.
+Employees must be reachable during core hours of 10am to 4pm.
+
+Code of Conduct:
+Employees must treat all colleagues with respect.
+Any form of harassment is strictly prohibited.
+Violations must be reported to HR within 48 hours.
