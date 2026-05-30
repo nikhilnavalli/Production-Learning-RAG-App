@@ -17,17 +17,21 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # ── Initialise clients ───────────────────────────────────────────────────────
 app = FastAPI(title="RAG Chatbot")
+groq_client = Groq(api_key=GROQ_API_KEY)
+embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+chroma_client = chromadb.Client()
+collection = chroma_client.get_or_create_collection(name="documents")
+
 # ── Logging setup ────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s | %(levelname)s | %(message)s'
 )
 logger = logging.getLogger(__name__)
-groq_client = Groq(api_key=GROQ_API_KEY)
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-chroma_client = chromadb.Client()
-collection = chroma_client.get_or_create_collection(name="documents")
 
+# ── Models ───────────────────────────────────────────────────────────────────
+class QuestionRequest(BaseModel):
+    question: str
 
 # ── Helper: split text into chunks ──────────────────────────────────────────
 def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50):
